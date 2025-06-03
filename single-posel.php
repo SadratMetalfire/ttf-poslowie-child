@@ -3,7 +3,16 @@
 <main>
     <article class="posel-article">
         <div class="posel-photo">
-            <img src="<?php echo esc_url(get_field('photo_url')); ?>" alt="<?php the_title_attribute(); ?>">
+            <?php
+            if (has_post_thumbnail()) {
+                the_post_thumbnail('medium');
+            } else {
+                $fallback = get_field('photo_url');
+                if ($fallback) {
+                    echo '<img src="' . esc_url($fallback) . '" alt="' . esc_attr(get_the_title()) . '">';
+                }
+            }
+            ?>
         </div>
         <div class="posel-details">
             <h1><?php the_title(); ?></h1>

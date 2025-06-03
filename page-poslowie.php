@@ -22,7 +22,16 @@
             <?php while ($poslowie_query->have_posts()) : $poslowie_query->the_post(); ?>
                 <li class="posel-item">
                     <a href="<?php the_permalink(); ?>">
-                        <img src="<?php echo esc_url(get_field('photo_url')); ?>" alt="<?php the_title_attribute(); ?>" />
+                        <?php
+                        if (has_post_thumbnail()) {
+                            the_post_thumbnail('medium');
+                        } else {
+                            $fallback = get_field('photo_url');
+                            if ($fallback) {
+                                echo '<img src="' . esc_url($fallback) . '" alt="' . esc_attr(get_the_title()) . '" />';
+                            }
+                        }
+                        ?>
                     </a><br>
                     <a href="<?php the_permalink(); ?>"><strong><?php the_title(); ?></strong></a><br>
                     <strong>Klub:</strong> <?php echo esc_html(get_field('club')); ?><br>
