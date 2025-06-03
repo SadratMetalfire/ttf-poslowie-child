@@ -13,3 +13,11 @@ A simple repository implementing a recruitment task to create a WordPress-based 
 The repository is lightweight and does not contain a full WordPress installation, assuming the user is familiar with setting up a clean WordPress instance and adding a child theme.
 
 Documentation for the used API: https://api.sejm.gov.pl/sejm.html
+
+## Screenshots
+
+![Import Posel Admin Page](screenshots/admin.png)
+![Edit Posel Admin Page](screenshots/posel-edit.png)
+![Archive Posel Page](screenshots/archive-posel.png)
+![Archive Posel Page Responsive](screenshots/archive-posel-responsive.png)
+![Single Posel Page](screenshots/single-posel.png)
