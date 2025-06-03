@@ -1,5 +1,6 @@
 <?php
-function child_theme_enqueue_styles() {
+function child_theme_enqueue_styles()
+{
     wp_enqueue_style('parent-style', get_template_directory_uri() . '/style.css');
     wp_enqueue_style('child-style', get_stylesheet_uri(), array('parent-style'));
 }
@@ -7,7 +8,8 @@ add_action('wp_enqueue_scripts', 'child_theme_enqueue_styles');
 
 
 // Register CPT 'posel'
-function posel_register_cpt() {
+function posel_register_cpt()
+{
     $labels = [
         'name'                  => 'Posłowie',
         'singular_name'         => 'Poseł',
@@ -74,7 +76,8 @@ add_action('acf/init', function () {
 
 
 // Import posłów z API Sejmu (kadencja domyślnie 10)
-function import_poslow_from_api($term = 10) {
+function import_poslow_from_api($term = 10, $limit = 0)
+{
     $term = intval($term);
     $api_url = "https://api.sejm.gov.pl/sejm/term{$term}/MP";
 
@@ -92,14 +95,19 @@ function import_poslow_from_api($term = 10) {
         return false;
     }
 
+    $count = 0;
+
     foreach ($poslowie as $posel) {
+        if ($limit > 0 && $count >= $limit) {
+            break;
+        }
+
         if (empty($posel['id'])) {
             continue;
         }
 
         $post_title = $posel['firstLastName'] ?? $posel['lastFirstName'] ?? 'Bez nazwiska';
 
-        // Check if post with this api_id exists
         $existing = get_posts([
             'post_type'      => 'posel',
             'meta_key'       => 'api_id',
@@ -126,7 +134,6 @@ function import_poslow_from_api($term = 10) {
             continue;
         }
 
-        // Update ACF fields
         update_field('api_id', $posel['id'] ?? '', $post_id);
         update_field('first_name', $posel['firstName'] ?? '', $post_id);
         update_field('second_name', $posel['secondName'] ?? '', $post_id);
@@ -141,17 +148,19 @@ function import_poslow_from_api($term = 10) {
         update_field('profession', $posel['profession'] ?? '', $post_id);
         update_field('voivodeship', $posel['voivodeship'] ?? '', $post_id);
         update_field('number_of_votes', $posel['numberOfVotes'] ?? 0, $post_id);
-
-        // Save photo URL from API directly
         update_field('photo_url', "https://api.sejm.gov.pl/sejm/term{$term}/MP/{$posel['id']}/photo", $post_id);
+
+        $count++;
     }
 
     return true;
 }
 
 
+
 // Add admin submenu page for importing posłowie
-function posel_import_admin_menu() {
+function posel_import_admin_menu()
+{
     add_submenu_page(
         'edit.php?post_type=posel',
         'Import posłów',
@@ -165,7 +174,8 @@ add_action('admin_menu', 'posel_import_admin_menu');
 
 
 // Process import form submission via admin_post hook
-function posel_handle_import() {
+function posel_handle_import()
+{
     if (!current_user_can('manage_options')) {
         wp_die('Brak uprawnień.');
     }
@@ -180,28 +190,65 @@ function posel_handle_import() {
 }
 add_action('admin_post_posel_import', 'posel_handle_import');
 
+// Process limited import form submission via admin_post hook
+function posel_handle_import_test()
+{
+    if (!current_user_can('manage_options')) {
+        wp_die('Brak uprawnień.');
+    }
+
+    check_admin_referer('posel_import_test_action', 'posel_import_test_nonce');
+
+    $success = import_poslow_from_api(10, 10); // Import only 10
+
+    $redirect_url = add_query_arg('posel_import_result', $success ? 'test_success' : 'test_fail', wp_get_referer());
+    wp_safe_redirect($redirect_url);
+    exit;
+}
+add_action('admin_post_posel_import_test', 'posel_handle_import_test');
+
 
 // Import page content
-function posel_import_admin_page() {
+function posel_import_admin_page()
+{
     $result = isset($_GET['posel_import_result']) ? sanitize_text_field($_GET['posel_import_result']) : '';
 
-    ?>
+?>
     <div class="wrap">
         <h1>Import posłów</h1>
 
         <?php if ($result === 'success') : ?>
-            <div class="notice notice-success is-dismissible"><p>Import zakończony sukcesem.</p></div>
+            <div class="notice notice-success is-dismissible">
+                <p>Import zakończony sukcesem.</p>
+            </div>
         <?php elseif ($result === 'fail') : ?>
-            <div class="notice notice-error is-dismissible"><p>Import nie powiódł się.</p></div>
+            <div class="notice notice-error is-dismissible">
+                <p>Import nie powiódł się.</p>
+            </div>
+        <?php elseif ($result === 'test_success') : ?>
+            <div class="notice notice-success is-dismissible">
+                <p>Testowy import 10 posłów zakończony sukcesem.</p>
+            </div>
+        <?php elseif ($result === 'test_fail') : ?>
+            <div class="notice notice-error is-dismissible">
+                <p>Testowy import nie powiódł się.</p>
+            </div>
         <?php endif; ?>
 
-        <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>">
+        <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>" style="margin-bottom: 1em;">
             <?php wp_nonce_field('posel_import_action', 'posel_import_nonce'); ?>
             <input type="hidden" name="action" value="posel_import">
             <input type="submit" class="button button-primary" value="Importuj posłów z API">
         </form>
+
+        <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>">
+            <?php wp_nonce_field('posel_import_test_action', 'posel_import_test_nonce'); ?>
+            <input type="hidden" name="action" value="posel_import_test">
+            <input type="submit" class="button" value="TEST: Importuj 10 posłów">
+        </form>
+
     </div>
-    <?php
+<?php
 }
 
 // Make ACF fields readonly using CSS.
